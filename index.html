@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Tab</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #ffffff; overflow: hidden; width: 100vw; height: 100vh; }
+        /* Tabs & Titlebar */
+        .tab-bar { position: fixed; top: 0; left: 0; width: 100%; height: 35px; background: #202124; display: flex; align-items: flex-end; padding: 0 150px 0 10px; z-index: 2000000; box-sizing: border-box; -webkit-app-region: drag; }
+        .tab { background: #35363a; color: #9aa0a6; height: 28px; min-width: 140px; padding: 0 12px; border-radius: 8px 8px 0 0; font-size: 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-right: 4px; -webkit-app-region: no-drag; transition: background 0.2s; position: relative; }
+        .tab.active { background: #35363a; color: white; border-bottom: 2px solid #8ab4f8; }
+        .tab.private.active { border-bottom: 2px solid #bb86fc; }
+        .tab-icon { width: 16px; height: 16px; margin-right: 8px; display: block; object-fit: contain; }
+        .spinner { width: 12px; height: 12px; border: 2px solid rgba(255, 255, 255, 0.2); border-top: 2px solid #8ab4f8; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px; display: none; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .tab.loading .spinner { display: block; }
+        .tab.loading .tab-icon { display: none; }
+        .tab span { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 5px; }
+        .tab small { font-size: 14px; opacity: 0.7; padding: 0 4px; }
+        .tab small:hover { opacity: 1; color: #ff4d4d; }
+        .new-tab-btn { color: white; font-size: 20px; padding: 0 10px; cursor: pointer; line-height: 28px; -webkit-app-region: no-drag; }
+
+        /* Address Bar & Navigation */
+        .nav-bar { position: fixed; top: 35px; left: 0; width: 100%; height: 48px; background-color: #35363a; display: flex; align-items: center; padding: 0 10px; box-sizing: border-box; z-index: 1000000; gap: 8px; }
+        .nav-bar button { background: transparent; border: none; color: #f1f3f4; font-size: 20px; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; -webkit-app-region: no-drag; }
+        .nav-bar button:hover { background: rgba(255, 255, 255, 0.1); }
+        .address-bar-container { flex-grow: 1; background: #202124; height: 32px; border-radius: 16px; display: flex; align-items: center; padding: 0 15px; margin: 0 5px; }
+        #address-bar { width: 100%; background: transparent; border: none; color: #e8eaed; outline: none; font-size: 14px; }
+
+        /* Side Toolbar (Top Right) */
+        .toolbar-btn { color: #bdc1c6; cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.2); transition: background 0.2s; -webkit-app-region: no-drag; }
+        .toolbar-btn:hover { background: rgba(0, 0, 0, 0.4); color: white; }
+        .toolbar-btn.active { background: #8ab4f8; color: #202124; }
+
+        /* Window Controls */
+        .window-controls { position: absolute; top: 0; right: 0; height: 35px; display: flex; z-index: 2000001; -webkit-app-region: no-drag; background: #202124; }
+        .control-btn { width: 46px; height: 35px; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; font-size: 12px; transition: background 0.2s; }
+        .control-btn:hover { background: rgba(255, 255, 255, 0.1); }
+        .close-btn:hover { background: #e81123 !important; }
+
+        /* Download Popup */
+        .download-popup { position: fixed; top: 85px; right: 10px; width: 320px; background: #1a1a1b; border-radius: 12px; border: 1px solid #3c4043; box-shadow: 0 8px 30px rgba(0,0,0,0.5); z-index: 2147483647; color: #e8eaed; display: none; overflow: hidden; }
+        .download-popup.open { display: block; animation: slideIn 0.2s ease-out; }
+        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .popup-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3c4043; font-size: 13px; color: #9aa0a6; }
+        .popup-close { cursor: pointer; font-size: 18px; }
+        .popup-close:hover { color: white; }
+        .popup-list { max-height: 400px; overflow-y: auto; padding: 5px 0; }
+        .popup-item { padding: 12px 15px; display: flex; align-items: flex-start; gap: 12px; cursor: pointer; transition: background 0.2s; }
+        .popup-item:hover { background: #292a2d; }
+        .item-icon { width: 32px; height: 32px; background: #3c4043; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .item-details { flex-grow: 1; overflow: hidden; }
+        .item-name { font-size: 12px; font-weight: 500; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .item-meta { font-size: 10px; color: #9aa0a6; }
+        .popup-progress-container { width: 100%; height: 2px; background: #3c4043; border-radius: 1px; margin-top: 8px; }
+        .popup-progress-bar { height: 100%; background: #8ab4f8; border-radius: 1px; width: 0%; }
+        .popup-footer { padding: 12px 15px; border-top: 1px solid #3c4043; text-align: left; background: #202124; }
+        .full-history-link { font-size: 12px; color: #8ab4f8; text-decoration: none; display: flex; align-items: center; justify-content: space-between; }
+        .full-history-link:hover { text-decoration: underline; }
+
+        /* Sidebar */
+
+        .sidebar { position: fixed; top: 83px; right: 0; width: 260px; height: calc(100vh - 83px); background: #202124; border-left: 1px solid #3c4043; z-index: 2000000; transition: transform 0.2s ease; color: #e8eaed; padding: 10px 0; box-sizing: border-box; transform: translateX(260px); }
+        .sidebar.open { transform: translateX(0); box-shadow: -4px 0 20px rgba(0,0,0,0.5); }
+        .sidebar-header { padding: 10px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #9aa0a6; }
+        .sidebar-item { padding: 10px 20px; display: flex; align-items: center; cursor: pointer; font-size: 14px; transition: background 0.2s, color 0.2s; color: #bdc1c6; }
+        .sidebar-item:hover { background: #35363a; color: white; }
+
+        /* Home UI */
+        .main-container { margin-top: 83px; height: calc(100vh - 83px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        h1.home-title { font-size: 72px; color: #202124; margin-bottom: 20px; font-weight: 400; }
+        .search-wrapper { width: 90%; max-width: 580px; background: white; border: 1px solid #dfe1e5; border-radius: 24px; padding: 5px 20px; display: flex; align-items: center; transition: box-shadow 0.2s; }
+        #home-input { flex: 1; border: none; outline: none; height: 34px; font-size: 16px; background: transparent; }
+        .version-tag { position: fixed; bottom: 15px; right: 20px; color: #70757a; font-size: 13px; }
+        
+        svg { width: 18px; height: 18px; fill: currentColor; }
+
+    </style>
+</head>
+<body>
+    <div class="tab-bar" id="tab-bar">
+        <div class="tab active" onclick="switchTab(0)" id="tab-0"><div class="spinner"></div><img class="tab-icon" id="icon-0" src="https://www.google.com/s2/favicons?sz=64&domain=google.com"><span>Home Page</span></div>
+        <div class="new-tab-btn" onclick="createNewTab()">+</div>
+        <div class="window-controls"><div class="control-btn" onclick="windowAction('minimize')">⎯</div><div class="control-btn" onclick="windowAction('maximize')">▢</div><div class="control-btn close-btn" onclick="windowAction('close')">✕</div></div>
+    </div>
+    
+    <div class="nav-bar">
+        <button onclick="nav('go-back')"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+        <button onclick="nav('go-forward')"><svg viewBox="0 0 24 24"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z"/></svg></button>
+        <button onclick="nav('reload')"><svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></button>
+        <div class="address-bar-container"><input type="text" id="address-bar" placeholder="Search Google or type a URL" spellcheck="false"></div>
+        <div class="toolbar-btn" id="dl-icon-btn" onclick="toggleDownloadPopup()" title="Downloads">
+            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+        </div>
+        <div class="toolbar-btn" onclick="toggleSidebar()" title="Menu">
+            <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </div>
+    </div>
+
+    <!-- Download Popup -->
+    <div class="download-popup" id="download-popup">
+        <div class="popup-header">
+            <span>Recent download history</span>
+            <span class="popup-close" onclick="toggleDownloadPopup()">×</span>
+        </div>
+        <div class="popup-list" id="popup-list">
+            <!-- Items populated dynamically -->
+            <div style="padding: 20px; text-align: center; color: #9aa0a6; font-size: 12px;">No recent downloads</div>
+        </div>
+        <div class="popup-footer">
+            <a href="#" class="full-history-link" onclick="openInternalPage('internal://downloads'); toggleDownloadPopup();">
+                <span>Full download history</span>
+                <svg viewBox="0 0 24 24" style="width:14px; height:14px;"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+            </a>
+        </div>
+    </div>
+    
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">Browser</div>
+        <div class="sidebar-item" onclick="createNewTab(false)">New Tab</div>
+        <div class="sidebar-item" onclick="createNewTab(true)" style="color: #bb86fc;">Private Mode</div>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-item" onclick="openInternalPage('internal://history')">History</div>
+        <div class="sidebar-item" onclick="openInternalPage('internal://downloads')">Downloads</div>
+        <div class="sidebar-item" onclick="openInternalPage('internal://settings')">Settings</div>
+    </div>
+
+    <a href="D:\viron-browser\viron-browser\changelog.html" style="text-decoration: none;">
+    <div class="version-tag">Ver: 2.3(Stable)</div>
+</a>
+    <div class="main-container" id="home-ui"><h1 class="home-title">Web Search</h1><div class="search-wrapper"><input type="text" id="home-input" placeholder="Search..." autofocus></div></div>
+    
+    <script>
+        const { ipcRenderer } = require('electron');
+        let tabCount = 0, activeTabId = 0, tabUrls = { 0: "" }, tabPrivateStates = { 0: false };
+        let downloadHistory = {}; // Global history for this window's popup
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('open');
+                const isOpen = sidebar.classList.contains('open');
+                ipcRenderer.send('sidebar-state', isOpen);
+            }
+        }
+        
+        function openInternalPage(url) { load(url); }
+        
+        ipcRenderer.on('execute-shortcut', (event, action) => { 
+            if (action === 'new-tab') createNewTab(); 
+            else if (action === 'close-tab' && activeTabId !== 0) closeTab(null, activeTabId); 
+            else if (action === 'focus-url') { const bar = document.getElementById('address-bar'); bar.focus(); bar.select(); } 
+        });
+        
+        ipcRenderer.on('loading-state', (event, { id, isLoading }) => { 
+            const tab = document.getElementById(`tab-${id}`); 
+            if (tab) isLoading ? tab.classList.add('loading') : tab.classList.remove('loading'); 
+        });
+        
+        ipcRenderer.on('favicon-changed', (event, { id, favUrl }) => { 
+            const iconImg = document.getElementById(`icon-${id}`); 
+            if (iconImg) iconImg.src = favUrl; 
+        });
+        
+        function createNewTab(isPrivate = false) {
+            if (isPrivate) {
+                ipcRenderer.send('open-private-window');
+                return;
+            }
+            tabCount++; const id = tabCount; tabUrls[id] = ""; tabPrivateStates[id] = isPrivate;
+            const tab = document.createElement('div'); tab.className = isPrivate ? 'tab private' : 'tab'; tab.id = `tab-${id}`;
+            tab.innerHTML = `<div class="spinner"></div><img class="tab-icon" id="icon-${id}" src="https://www.google.com/s2/favicons?sz=64&domain=google.com"><span>${isPrivate ? 'Private' : 'New Tab'}</span><small onclick="closeTab(event, ${id})">✕</small>`;
+            tab.onclick = () => switchTab(id);
+            document.getElementById('tab-bar').insertBefore(tab, document.querySelector('.new-tab-btn'));
+            ipcRenderer.send('new-tab', { id, isPrivate }); switchTab(id);
+        }
+
+        ipcRenderer.on('init-private-mode', () => {
+            // This window is designated as a private window
+            // Replace the initial tab with a private one
+            const initialTab = document.getElementById('tab-0');
+            if (initialTab) {
+                initialTab.className = 'tab active private';
+                initialTab.querySelector('span').innerText = 'Private';
+                tabPrivateStates[0] = true;
+            }
+        });
+        
+        function switchTab(id) { 
+            activeTabId = id; 
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); 
+            document.getElementById(`tab-${id}`).classList.add('active'); 
+            document.getElementById('address-bar').value = tabUrls[id] || ""; 
+            
+            // Show/Hide Home UI based on URL
+            const homeUI = document.getElementById('home-ui');
+            const url = tabUrls[id] || "";
+            if (url === "" || url === "about:blank") {
+                homeUI.style.display = 'flex';
+            } else {
+                homeUI.style.display = 'none';
+            }
+            
+            ipcRenderer.send('switch-tab', id); 
+        }
+        
+        const load = (val) => { 
+            if(val) { 
+                tabUrls[activeTabId] = val; 
+                ipcRenderer.send('load-url', { id: activeTabId, url: val, isPrivate: tabPrivateStates[activeTabId] }); 
+                document.getElementById('address-bar').value = val; 
+            } 
+        };
+        
+        ipcRenderer.on('url-changed', (event, { id, url }) => { 
+            tabUrls[id] = url; 
+            if (id === activeTabId) document.getElementById('address-bar').value = url; 
+            const tab = document.getElementById(`tab-${id}`); 
+            if (tab) { 
+                let title = "New Tab";
+                if (url.includes('history.html')) title = "HISTORY";
+                else if (url.includes('downloads.html')) title = "DOWNLOADS";
+                else if (url.includes('settings.html')) title = "SETTINGS";
+                else if (url.includes('passwords.html')) title = "PASSWORDS";
+                else if (url.includes('http')) title = url.split('/')[2] || url;
+                
+                tab.querySelector('span').innerText = title; 
+
+                // Set icon for internal pages
+                const iconImg = document.getElementById(`icon-${id}`);
+                if (url.includes('settings.html')) iconImg.src = "https://www.google.com/s2/favicons?sz=64&domain=google.com"; // Placeholder or gear icon
+                else if (url.includes('passwords.html')) iconImg.src = "https://www.google.com/s2/favicons?sz=64&domain=google.com";
+            } 
+        });
+        
+        function windowAction(action) { 
+            ipcRenderer.send('window-control', action); 
+            if (action === 'maximize') { 
+                const btn = document.querySelector('.control-btn:nth-child(2)'); 
+                btn.innerText = (btn.innerText === '▢') ? '❐' : '▢'; 
+            } 
+        }
+        
+        document.getElementById('address-bar').addEventListener('keypress', (e) => { if(e.key === 'Enter') load(e.target.value); });
+        document.getElementById('home-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') { load(e.target.value); e.target.value = ""; } });
+        
+        function nav(cmd) { ipcRenderer.send(cmd); }
+        
+        function closeTab(e, id) { 
+            if (e) e.stopPropagation(); 
+            delete tabUrls[id]; 
+            delete tabPrivateStates[id]; 
+            document.getElementById(`tab-${id}`).remove(); 
+            if(activeTabId === id) switchTab(0); 
+        }
+        
+        function toggleDownloadPopup() {
+            const popup = document.getElementById('download-popup');
+            const sidebar = document.getElementById('sidebar');
+            popup.classList.toggle('open');
+            document.getElementById('dl-icon-btn').classList.toggle('active');
+            
+            ipcRenderer.send('sidebar-state', { 
+                sidebarOpen: sidebar.classList.contains('open'),
+                popupOpen: popup.classList.contains('open')
+            });
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const popup = document.getElementById('download-popup');
+            if (sidebar) {
+                sidebar.classList.toggle('open');
+                ipcRenderer.send('sidebar-state', { 
+                    sidebarOpen: sidebar.classList.contains('open'),
+                    popupOpen: popup.classList.contains('open')
+                });
+            }
+        }
+
+
+
+
+        ipcRenderer.on('download-progress', (event, data) => {
+            const popupList = document.getElementById('popup-list');
+            
+            // Sync with global window history
+            downloadHistory[data.id] = data;
+
+            // Update UI
+            if (popupList.children.length === 1 && popupList.children[0].innerText.includes("No recent")) {
+                popupList.innerHTML = '';
+            }
+
+            let item = document.getElementById('popup-dl-' + data.id);
+            if (!item && data.state !== 'completed') {
+                item = document.createElement('div');
+                item.id = 'popup-dl-' + data.id;
+                item.className = 'popup-item';
+                item.innerHTML = `
+                    <div class="item-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></div>
+                    <div class="item-details">
+                        <div class="item-name">${data.fileName}</div>
+                        <div class="item-meta">Starting...</div>
+                        <div class="popup-progress-container"><div class="popup-progress-bar"></div></div>
+                    </div>
+                `;
+                item.onclick = () => { if (data.savePath) ipcRenderer.send('show-item-in-folder', data.savePath); };
+                popupList.prepend(item);
+                
+                // Only auto-open if it's a fresh start, not a re-broadcast
+                if (!document.getElementById('download-popup').classList.contains('open')) {
+                    toggleDownloadPopup();
+                }
+            }
+
+            if (item) {
+                const meta = item.querySelector('.item-meta');
+                const bar = item.querySelector('.popup-progress-bar');
+                
+                if (data.state === 'completed') {
+                    meta.innerText = 'Completed';
+                    bar.parentElement.style.display = 'none';
+                    return;
+                }
+
+                bar.style.width = (data.progress * 100) + '%';
+                
+                let etaText = "";
+                if (data.progress > 0 && data.progress < 1) {
+                    const elapsed = (Date.now() / 1000) - data.startTime;
+                    const speed = data.received / elapsed;
+                    const remaining = data.total - data.received;
+                    const secondsLeft = Math.round(remaining / speed);
+                    if (isFinite(secondsLeft)) {
+                        const mins = Math.floor(secondsLeft / 60);
+                        const secs = secondsLeft % 60;
+                        etaText = (mins > 0 ? mins + "m " : "") + secs + "s left";
+                    }
+                }
+                const MB = (data.received / (1024*1024)).toFixed(1);
+                const totalMB = (data.total / (1024*1024)).toFixed(1);
+                meta.innerText = `${MB}/${totalMB} MB • ${etaText}`;
+            }
+        });
+
+        window.addEventListener('click', function(event) { 
+            const sidebar = document.getElementById('sidebar'); 
+            const menuBtn = document.querySelector('.toolbar-btn:last-child');
+            if (sidebar && sidebar.classList.contains('open') && !sidebar.contains(event.target) && !menuBtn.contains(event.target)) {
+                toggleSidebar(); 
+            }
+            
+            // Close download popup when clicking outside
+            const dlPopup = document.getElementById('download-popup');
+            const dlBtn = document.getElementById('dl-icon-btn');
+            if (dlPopup.classList.contains('open') && !dlPopup.contains(event.target) && !dlBtn.contains(event.target)) {
+                toggleDownloadPopup();
+            }
+        });
+
+        ipcRenderer.on('confirm-close-download', () => {
+            if (confirm("Downloads are in progress. Do you want to cancel downloads and close the browser?")) {
+                ipcRenderer.send('cancel-downloads-and-close');
+            } else {
+                toggleDownloadPopup();
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings</title>
+    <style>
+        body { background: #0c0c0d; color: #e8eaed; font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif; padding: 60px 20px; max-width: 800px; margin: auto; line-height: 1.5; }
+        h1 { font-size: 24px; font-weight: 500; margin-bottom: 30px; }
+        h2 { font-size: 16px; font-weight: 500; margin-top: 40px; margin-bottom: 20px; color: #f1f3f4; }
+        .card { background: #1a1a1b; border-radius: 12px; border: 1px solid #292a2d; overflow: hidden; margin-bottom: 30px; }
+        .row { padding: 22px 24px; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid #292a2d; }
+        .row:last-child { border-bottom: none; }
+        .info { flex-grow: 1; padding-right: 20px; }
+        .label { font-size: 15px; margin-bottom: 4px; font-weight: 500; }
+        .subtext { font-size: 13px; color: #9aa0a6; max-width: 600px; }
+        .subtext a { color: #8ab4f8; text-decoration: none; }
+        
+        /* Interactive Elements */
+        .btn-change { background: #292a2d; border: 1.5px solid #3c4043; color: white; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-size: 14px; font-weight: 500; align-self: center; }
+        .btn-change:hover { background: #3c4043; }
+        
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; align-self: flex-start; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #3c4043; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #bb86fc; }
+        input:checked + .slider:before { transform: translateX(20px); background-color: #202124; }
+        
+        /* Radio Buttons Group */
+        .option-group { margin-top: 15px; padding-left: 5px; }
+        .option-item { display: flex; align-items: flex-start; gap: 15px; margin-bottom: 18px; cursor: pointer; }
+        .option-item input { margin-top: 3px; accent-color: #bb86fc; transform: scale(1.2); cursor: pointer; }
+        .option-text .opt-title { font-size: 14px; display: block; margin-bottom: 2px; }
+        .option-text .opt-desc { font-size: 12px; color: #9aa0a6; }
+
+        .sites-section { padding: 20px 24px; border-top: 1px solid #292a2d; }
+        .sites-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .add-btn { background: transparent; border: 1px solid #3c4043; color: #8ab4f8; padding: 6px 16px; border-radius: 18px; cursor: pointer; font-size: 13px; font-weight: 500; }
+        .add-btn:hover { background: rgba(138, 180, 248, 0.1); }
+    </style>
+</head>
+<body>
+    <h1>Settings</h1>
+    
+    <h2>Downloads</h2>
+    <div class="card">
+        <div class="row">
+            <div class="info">
+                <div class="label">Location</div>
+                <div id="current-path" class="subtext">...</div>
+            </div>
+            <button class="btn-change" onclick="changePath()">Change</button>
+        </div>
+        <div class="row">
+            <div class="info">
+                <div class="label">Ask where to save each file before downloading</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="ask-toggle" onchange="updateSettings()">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <h2>Memory</h2>
+    <div class="card">
+        <div class="row" style="border-bottom: none;">
+            <div class="info">
+                <div class="label">Memory Saver</div>
+                <div class="subtext">Frees up memory from inactive tabs. This gives active tabs and other apps more computer resources and keeps the browser fast. <a href="#">Learn more about Memory Saver</a></div>
+                
+                <div class="option-group">
+                    <label class="option-item">
+                        <input type="radio" name="mem-level" value="moderate" onchange="updateSettings()">
+                        <div class="option-text">
+                            <span class="opt-title">Moderate</span>
+                            <span class="opt-desc">Get moderate memory savings. Your tabs become inactive after a longer period of time.</span>
+                        </div>
+                    </label>
+                    <label class="option-item">
+                        <input type="radio" name="mem-level" value="balanced" checked onchange="updateSettings()">
+                        <div class="option-text">
+                            <span class="opt-title">Balanced (recommended)</span>
+                            <span class="opt-desc">Get balanced memory savings. Your tabs become inactive after an optimal period of time.</span>
+                        </div>
+                    </label>
+                    <label class="option-item">
+                        <input type="radio" name="mem-level" value="maximum" onchange="updateSettings()">
+                        <div class="option-text">
+                            <span class="opt-title">Maximum</span>
+                            <span class="opt-desc">Get maximum memory savings. Your tabs become inactive after a shorter period of time.</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="mem-saver-toggle" checked onchange="updateSettings()">
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="sites-section">
+            <div class="sites-header">
+                <div>
+                    <div class="label">Always keep these sites active</div>
+                    <div class="subtext">Sites you add will always stay active and memory won't be freed from them</div>
+                </div>
+                <button class="add-btn">Add</button>
+            </div>
+            <div class="subtext" style="color: #9aa0a6; font-style: italic;">No sites added</div>
+        </div>
+    </div>
+
+    <h2>Power</h2>
+    <div class="card">
+        <div class="row">
+            <div class="info">
+                <div class="label">Energy Saver</div>
+                <div class="subtext">Conserves battery power by limiting background activity and visual effects, such as smooth scrolling and video frame rates. <a href="#">Learn more about Energy Saver</a></div>
+                
+                <div class="option-group">
+                    <label class="option-item">
+                        <input type="radio" name="energy-mode" value="battery" checked onchange="updateSettings()">
+                        <div class="option-text">
+                            <span class="opt-title">Turn on only when your battery is at 20% or lower</span>
+                        </div>
+                    </label>
+                    <label class="option-item">
+                        <input type="radio" name="energy-mode" value="unplugged" onchange="updateSettings()">
+                        <div class="option-text">
+                            <span class="opt-title">Turn on when your computer is unplugged</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="energy-saver-toggle" checked onchange="updateSettings()">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <h2>Autofill and passwords</h2>
+    <div class="card">
+        <div class="row" style="cursor: pointer;" onclick="window.location.href='internal://passwords'">
+            <div class="info" style="display: flex; align-items: center; gap: 15px;">
+                <svg viewBox="0 0 24 24" style="width: 20px; color: #9aa0a6;"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                <div class="label">Password Manager</div>
+            </div>
+            <svg viewBox="0 0 24 24" style="width: 20px; color: #9aa0a6;"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+        </div>
+        <div class="row">
+            <div class="info" style="display: flex; align-items: center; gap: 15px;">
+                <svg viewBox="0 0 24 24" style="width: 20px; color: #9aa0a6;"><path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+                <div class="label">Payment methods</div>
+            </div>
+            <svg viewBox="0 0 24 24" style="width: 20px; color: #9aa0a6;"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+        </div>
+        <div class="row">
+            <div class="info" style="display: flex; align-items: center; gap: 15px;">
+                <svg viewBox="0 0 24 24" style="width: 20px; color: #9aa0a6;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                <div class="label">Addresses and more</div>
+            </div>
+            <svg viewBox="0 0 24 24" style="width: 20px; color: #9aa0a6;"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+        </div>
+        <div class="row" style="margin-top: 10px;">
+            <div class="info">
+                <div class="label">Allow auto-fill in private windows</div>
+                <div class="subtext">Info from regular windows can be read/auto-filled in private windows</div>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="autofill-private-toggle" checked onchange="updateSettings()">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <script>
+        async function loadSettings() {
+            const settings = await window.electronAPI.getSettings();
+            document.getElementById("current-path").innerText = settings.downloadPath;
+            document.getElementById("ask-toggle").checked = settings.askEverytime;
+            
+            // Performance Settings
+            document.getElementById("mem-saver-toggle").checked = settings.memorySaver;
+            document.querySelector(`input[name="mem-level"][value="${settings.memoryLevel}"]`).checked = true;
+            
+            document.getElementById("energy-saver-toggle").checked = settings.energySaver;
+            document.querySelector(`input[name="energy-mode"][value="${settings.energyMode}"]`).checked = true;
+
+            // Autofill Settings
+            document.getElementById("autofill-private-toggle").checked = settings.autofillPrivate;
+        }
+
+        async function changePath() {
+            const newPath = await window.electronAPI.selectDownloadFolder();
+            if (newPath) {
+                await window.electronAPI.updateSettings({ downloadPath: newPath });
+                loadSettings();
+            }
+        }
+
+        function updateSettings() {
+            const settings = {
+                askEverytime: document.getElementById("ask-toggle").checked,
+                memorySaver: document.getElementById("mem-saver-toggle").checked,
+                memoryLevel: document.querySelector('input[name="mem-level"]:checked').value,
+                energySaver: document.getElementById("energy-saver-toggle").checked,
+                energyMode: document.querySelector('input[name="energy-mode"]:checked').value,
+                autofillPrivate: document.getElementById("autofill-private-toggle").checked
+            };
+            window.electronAPI.updateSettings(settings);
+        }
+
+        window.electronAPI.onSettingsUpdated((newSettings) => {
+            document.getElementById("current-path").innerText = newSettings.downloadPath;
+        });
+
+        loadSettings();
+    </script>
+</body>
+</html>
