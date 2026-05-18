@@ -1,15 +1,15 @@
 const { app, BrowserWindow } = require('electron');
-const { updateElectronApp } = require('update-electron-app');
 
-// Initialize the auto-updater (Must be called before app.whenReady)
-updateElectronApp();
+// 1. Handle Squirrel installation flags FIRST before initializing anything else
 if (require('electron-squirrel-startup')) {
   return; // Quits the app immediately during startup events so the installer can do its job
 }
 
-// Your regular browser code continues below...
-const { app, BrowserWindow } = require('electron');
-const { app, BrowserWindow, BrowserView, ipcMain, globalShortcut, shell, dialog } = require('electron');
+const { updateElectronApp } = require('update-electron-app');
+// 2. Safely initialize the auto-updater now that startup events are cleared
+updateElectronApp();
+
+const { BrowserView, ipcMain, globalShortcut, shell, dialog } = require('electron');
 const path = require('path'); 
 const fs = require('fs'); 
 
@@ -93,8 +93,6 @@ function createWindow() {
   });
 }
 
-
-
 function createTab(id, isPrivate = false, targetWin = win) {
   const view = new BrowserView({
     webPreferences: {
@@ -156,9 +154,6 @@ function createTab(id, isPrivate = false, targetWin = win) {
         const total = item.getTotalBytes();
         const progress = total > 0 ? (received / total) : 0;
         
-        // Simple ETA calculation
-        // item.getLastModifiedTime() is not for ETA. Electron's DownloadItem doesn't have native ETA.
-        // We'll send raw data to frontend.
         // Broadcast to ALL windows so every tab's popup stays synced
         BrowserWindow.getAllWindows().forEach(w => {
           w.webContents.send('download-progress', {
@@ -185,7 +180,6 @@ function createTab(id, isPrivate = false, targetWin = win) {
       });
       if (state === 'completed') {
         const downloadsPath = path.join(__dirname, 'downloads.html');
-        // Ensure the file exists with a basic template if it doesn't
         if (!fs.existsSync(downloadsPath)) {
           const initTemplate = `<!DOCTYPE html><html><head><style>
             body { background: #202124; color: #e8eaed; font-family: 'Segoe UI', sans-serif; padding: 40px; max-width: 800px; margin: auto; }
@@ -244,7 +238,6 @@ function createTab(id, isPrivate = false, targetWin = win) {
           <span class="info">${timestamp} - ${url}</span>
         </div>\n`;
         
-        // Simple way to append to the list in our static HTML
         let content = fs.readFileSync(downloadsPath, 'utf8');
         if (content.includes('<div id="list">')) {
           content = content.replace('<div id="list">', '<div id="list">\n' + entry);
@@ -275,10 +268,7 @@ function createPrivateWindow() {
 
   privateWin.loadFile('index.html');
 
-  // Ensure UI is on top
-  privateWin.webContents.on('dom-ready', () => {
-    // Rely on index.html z-index
-  });
+  privateWin.webContents.on('dom-ready', () => {});
   
   privateWin.on('close', (e) => {
     if (activeDownloads.size > 0) {
@@ -287,7 +277,6 @@ function createPrivateWindow() {
     }
   });
 
-  // Tag this window as starting in private mode
   privateWin.webContents.on('did-finish-load', () => {
     privateWin.webContents.send('init-private-mode');
   });
@@ -299,11 +288,7 @@ function updateViewBoundsForWindow(view, targetWin) {
   if (!view || !targetWin) return;
   const bounds = targetWin.getContentBounds();
   
-  // When the sidebar is open, we shrink the web view width by 260px.
-  // When the download popup is open, we shrink the height or move the view down.
-  // This physically moves the website content out of the way so the UI stays visible.
   const sidebarOffset = isSidebarOpen ? SIDEBAR_WIDTH : 0;
-  const popupPadding = isDownloadPopupOpen ? 420 : 0; // The max height of the popup list
   
   view.setBounds({ 
     x: 0, 
@@ -367,7 +352,7 @@ ipcMain.on('save-password', async (event, { url, username, password }) => {
     checkboxChecked: true
   });
 
-  if (result.response === 0) { // Save
+  if (result.response === 0) {
     settings.passwords.push({ url, username, password });
     saveSettings();
     BrowserWindow.getAllWindows().forEach(w => w.webContents.send('settings-updated', settings));
@@ -376,55 +361,22 @@ ipcMain.on('save-password', async (event, { url, username, password }) => {
 
 ipcMain.handle('get-passwords', () => settings.passwords);
 
-
-// --- FINAL FIX FOR CLEARING HISTORY ---
 ipcMain.on('show-item-in-folder', (event, filePath) => {
   shell.showItemInFolder(filePath);
 });
 
 ipcMain.on('clear-history', (event) => {
   const historyPath = path.join(__dirname, 'history.html');
-  const emptyTemplate = `<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body { background: #202124; color: #e8eaed; font-family: 'Segoe UI', sans-serif; padding: 40px; max-width: 800px; margin: auto; }
-        .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3c4043; padding-bottom: 20px; margin-bottom: 20px; }
-        h1 { margin: 0; font-weight: 400; }
-        .clear-btn { background: #ff4d4d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; }
-        .clear-btn:hover { background: #ff3333; }
-        .entry { padding: 12px; border-bottom: 1px solid #3c4043; display: flex; align-items: center; }
-        .time { color: #9aa0a6; font-size: 12px; margin-right: 15px; min-width: 150px; }
-        .link { color: #8ab4f8; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="header-container">
-        <h1>History</h1>
-        <button class="clear-btn" onclick="clearAll()">Clear History</button>
-    </div>
-    <script>
-        function clearAll() {
-            if(confirm("Are you sure you want to clear all history?")) {
-                window.electronAPI.clearHistory();
-            }
-        }
-        window.electronAPI.onHistoryCleared(() => {
-            window.location.reload();
-        });
-    </script>
-</body>
-</html>`;
+  const emptyTemplate = `<!DOCTYPE html><html><head><style>body { background: #202124; color: #e8eaed; font-family: 'Segoe UI', sans-serif; padding: 40px; max-width: 800px; margin: auto; } .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3c4043; padding-bottom: 20px; margin-bottom: 20px; } h1 { margin: 0; font-weight: 400; } .clear-btn { background: #ff4d4d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; } .clear-btn:hover { background: #ff3333; } .entry { padding: 12px; border-bottom: 1px solid #3c4043; display: flex; align-items: center; } .time { color: #9aa0a6; font-size: 12px; margin-right: 15px; min-width: 150px; } .link { color: #8ab4f8; text-decoration: none; }</style></head><body><div class="header-container"><h1>History</h1><button class="clear-btn" onclick="clearAll()">Clear History</button></div><script>function clearAll() { if(confirm("Are you sure you want to clear all history?")) { window.electronAPI.clearHistory(); } } window.electronAPI.onHistoryCleared(() => { window.location.reload(); });</script></body></html>`;
 
   fs.writeFile(historyPath, emptyTemplate, (err) => { 
     if (err) {
       console.error("Failed to clear history:", err); 
     } else {
-      // CLEAR CACHE AND STORAGE: Forces Electron to load the empty file from disk
       event.sender.session.clearStorageData({
         storages: ['cachestorage', 'cookies', 'filesystem']
       }).then(() => {
-          event.reply('history-cleared'); // Notify the page to reload
+          event.reply('history-cleared');
       });
     }
   });
@@ -468,67 +420,7 @@ ipcMain.on('load-url', (event, { id, url, isPrivate }) => {
 
 ipcMain.on('clear-downloads', (event) => {
   const downloadsPath = path.join(__dirname, 'downloads.html');
-  const emptyTemplate = `<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body { background: #202124; color: #e8eaed; font-family: 'Segoe UI', sans-serif; padding: 40px; max-width: 800px; margin: auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3c4043; padding-bottom: 20px; margin-bottom: 20px; }
-        h1 { margin: 0; font-weight: 400; }
-        .clear-btn { background: #3c4043; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; }
-        .clear-btn:hover { background: #4b4f53; }
-        .entry { padding: 15px; border-bottom: 1px solid #3c4043; display: flex; flex-direction: column; cursor: pointer; transition: background 0.2s; border-radius: 8px; margin-bottom: 5px; position: relative; }
-        .entry:hover { background: #292a2d; }
-        .name { color: #8ab4f8; font-size: 16px; margin-bottom: 5px; font-weight: 500; }
-        .info { color: #9aa0a6; font-size: 12px; }
-        .progress-container { width: 100%; height: 4px; background: #3c4043; border-radius: 2px; margin-top: 10px; display: none; }
-        .progress-bar { height: 100%; background: #8ab4f8; border-radius: 2px; width: 0%; transition: width 0.3s; }
-        .status { font-size: 11px; margin-top: 5px; color: #9aa0a6; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Downloads</h1>
-        <button class="clear-btn" onclick="clearAll()">Clear List</button>
-    </div>
-    <div id="list"></div>
-    <script>
-        function openFile(path) { window.electronAPI.showItemInFolder(path); }
-        function clearAll() { window.electronAPI.clearDownloads(); }
-        
-        window.electronAPI.onDownloadProgress((data) => {
-            let item = document.getElementById('dl-' + data.id);
-            if (!item && data.state !== 'completed') {
-                item = document.createElement('div');
-                item.id = 'dl-' + data.id;
-                item.className = 'entry';
-                item.innerHTML = '<span class="name">' + data.fileName + '</span><span class="info">' + data.state + '</span><div class="progress-container" style="display:block"><div class="progress-bar"></div></div><div class="status"></div>';
-                document.getElementById('list').prepend(item);
-            }
-            if (item) {
-                if (data.state === 'completed') { window.location.reload(); return; }
-                const bar = item.querySelector('.progress-bar');
-                const status = item.querySelector('.status');
-                bar.style.width = (data.progress * 100) + '%';
-                
-                let eta = "";
-                if (data.progress > 0 && data.progress < 1) {
-                    const elapsed = (Date.now() / 1000) - data.startTime;
-                    const speed = data.received / elapsed;
-                    const remaining = data.total - data.received;
-                    const secondsLeft = Math.round(remaining / speed);
-                    if (isFinite(secondsLeft)) {
-                        const mins = Math.floor(secondsLeft / 60);
-                        const secs = secondsLeft % 60;
-                        eta = " - " + (mins > 0 ? mins + "m " : "") + secs + "s remaining";
-                    }
-                }
-                status.innerText = Math.round(data.progress * 100) + '% - ' + (data.received / (1024*1024)).toFixed(1) + 'MB / ' + (data.total / (1024*1024)).toFixed(1) + 'MB' + eta;
-            }
-        });
-    </script>
-</body>
-</html>`;
+  const emptyTemplate = `<!DOCTYPE html><html><head><style>body { background: #202124; color: #e8eaed; font-family: 'Segoe UI', sans-serif; padding: 40px; max-width: 800px; margin: auto; } .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3c4043; padding-bottom: 20px; margin-bottom: 20px; } h1 { margin: 0; font-weight: 400; } .clear-btn { background: #3c4043; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; } .clear-btn:hover { background: #4b4f53; } .entry { padding: 15px; border-bottom: 1px solid #3c4043; display: flex; flex-direction: column; cursor: pointer; transition: background 0.2s; border-radius: 8px; margin-bottom: 5px; position: relative; } .entry:hover { background: #292a2d; } .name { color: #8ab4f8; font-size: 16px; margin-bottom: 5px; font-weight: 500; } .info { color: #9aa0a6; font-size: 12px; } .progress-container { width: 100%; height: 4px; background: #3c4043; border-radius: 2px; margin-top: 10px; display: none; } .progress-bar { height: 100%; background: #8ab4f8; border-radius: 2px; width: 0%; transition: width 0.3s; } .status { font-size: 11px; margin-top: 5px; color: #9aa0a6; }</style></head><body><div class="header"><h1>Downloads</h1><button class="clear-btn" onclick="clearAll()">Clear List</button></div><div id="list"></div><script>function openFile(path) { window.electronAPI.showItemInFolder(path); } function clearAll() { window.electronAPI.clearDownloads(); } window.electronAPI.onDownloadProgress((data) => { let item = document.getElementById('dl-' + data.id); if (!item && data.state !== 'completed') { item = document.createElement('div'); item.id = 'dl-' + data.id; item.className = 'entry'; item.innerHTML = '<span class="name">' + data.fileName + '</span><span class="info">' + data.state + '</span><div class="progress-container" style="display:block"><div class="progress-bar"></div></div><div class="status"></div>'; document.getElementById('list').prepend(item); } if (item) { if (data.state === 'completed') { window.location.reload(); return; } const bar = item.querySelector('.progress-bar'); const status = item.querySelector('.status'); bar.style.width = (data.progress * 100) + '%'; let eta = ""; if (data.progress > 0 && data.progress < 1) { const elapsed = (Date.now() / 1000) - data.startTime; const speed = data.received / elapsed; const remaining = data.total - data.received; const secondsLeft = Math.round(remaining / speed); if (isFinite(secondsLeft)) { const mins = Math.floor(secondsLeft / 60); const secs = secondsLeft % 60; eta = " - " + (mins > 0 ? mins + "m " : "") + secs + "s remaining"; } } status.innerText = Math.round(data.progress * 100) + '% - ' + (data.received / (1024*1024)).toFixed(1) + 'MB / ' + (data.total / (1024*1024)).toFixed(1) + 'MB' + eta; } });</script></body></html>`;
   fs.writeFile(downloadsPath, emptyTemplate, (err) => {
     if (err) console.error(err);
     else event.reply('downloads-cleared');

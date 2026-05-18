@@ -1,7 +1,7 @@
 {
   "name": "viron-browser",
   "version": "1.0.0",
-  "description": "",
+  "description": "A modern, secure, memory saving and fast web browser",
   "main": "main.js",
   "scripts": {
     "start": "electron-forge start",
@@ -11,12 +11,12 @@
   },
   "test": "echo \"Error: no test specified\" && exit 1",
   "keywords": [],
-  "author": "",
+  "author": "Pragatheeshwaran",
   "license": "ISC",
   "type": "commonjs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR_GITHUB_USERNAME/viron-browser.git"
+    "url": "https://github.com/Pragatheesh2007/Viron_browser"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",
