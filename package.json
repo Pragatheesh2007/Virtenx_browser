@@ -1,6 +1,6 @@
 {
   "name": "viron-browser",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A modern, secure, memory saving and fast web browser",
   "main": "main.js",
   "scripts": {
@@ -48,7 +48,7 @@
             "exe": "viron-browser.exe",
             "setupExe": "VironBrowserSetup.exe",
             "setupIcon": "./assets/icons/icon.ico",
-            "loadingGif": "./assets/splash.gif"
+            "loadingGif": "./assets/splash.png"
           }
         },
         {
