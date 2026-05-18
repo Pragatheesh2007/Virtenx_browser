@@ -16,7 +16,7 @@
   "type": "commonjs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Pragatheesh2007/Viron_browser"
+    "url": "https://github.com/Pragatheesh2007/Viron_browser.git"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",
