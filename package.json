@@ -1,5 +1,5 @@
 {
-  "name": "viron-browser",
+  "name": "Virtenx Browser",
   "version": "2.5.0",
   "description": "A modern, secure, memory saving and fast web browser",
   "main": "main.js",
@@ -40,10 +40,10 @@
         {
           "name": "@electron-forge/maker-squirrel",
           "config": {
-            "name": "viron-browser",
-            "authors": "Viron",
-            "exe": "viron-browser.exe",
-            "setupExe": "VironBrowserSetup.exe",
+            "name": "Virtenx Browser",
+            "authors": "R.S.Pragatheeshwaran",
+            "exe": "Virtenx_Browser.exe",
+            "setupExe": "VirtenxBrowserSetup.exe",
             "setupIcon": "./assets/icons/icon.ico",
             "loadingGif": "./assets/splash.png",
             "iconUrl": "https://raw.githubusercontent.com/Pragatheesh2007/Viron_browser/refs/heads/main/assets/icons/icon.ico"
