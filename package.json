@@ -1,6 +1,6 @@
 {
   "name": "Virtenx-Browser",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "A modern, secure, memory saving and fast web browser",
   "main": "main.js",
   "scripts": {
@@ -14,7 +14,7 @@
   "author": "Pragatheeshwaran",
   "license": "ISC",
   "type": "commonjs",
-  "repository": "https://github.com/Pragatheesh2007/Viron_browser",
+  "repository": "https://github.com/Pragatheesh2007/Virtenx_browser",
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",
     "@electron-forge/maker-deb": "^7.11.1",
@@ -46,7 +46,7 @@
             "setupExe": "VirtenxBrowserSetup.exe",
             "setupIcon": "./assets/icons/icon.ico",
             "loadingGif": "./assets/splash.png",
-            "iconUrl": "https://raw.githubusercontent.com/Pragatheesh2007/Viron_browser/refs/heads/main/assets/icons/icon.ico"
+            "iconUrl": "https://raw.githubusercontent.com/Pragatheesh2007/Virtenx_browser/main/assets/icons/icon.ico"
           }
         },
         {

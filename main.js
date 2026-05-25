@@ -1,5 +1,6 @@
 const { app, BrowserWindow } = require('electron');
 const { updateElectronApp } = require('update-electron-app');
+updateElectronApp({ notifyUser: true });
 
 // Initialize the auto-updater (Must be called before app.whenReady)
 updateElectronApp();
