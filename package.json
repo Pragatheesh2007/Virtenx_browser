@@ -1,5 +1,5 @@
 {
-  "name": "Virtenx Browser",
+  "name": "Virtenx-Browser",
   "version": "2.5.0",
   "description": "A modern, secure, memory saving and fast web browser",
   "main": "main.js",
@@ -40,7 +40,7 @@
         {
           "name": "@electron-forge/maker-squirrel",
           "config": {
-            "name": "Virtenx Browser",
+            "name": "Virtenx-Browser",
             "authors": "R.S.Pragatheeshwaran",
             "exe": "Virtenx_Browser.exe",
             "setupExe": "VirtenxBrowserSetup.exe",
