@@ -7,7 +7,7 @@ if (require('electron-squirrel-startup')) {
   return; // Quits the app immediately during startup events so the installer can do its job
 }
   
-const { app, BrowserWindow, BrowserView, ipcMain, globalShortcut, shell, dialog } = require('electron');
+const { BrowserView, ipcMain, globalShortcut, shell, dialog } = require('electron');
 const path = require('path'); 
 const fs = require('fs'); 
 
