@@ -1,6 +1,6 @@
 {
   "name": "viron-browser",
-  "version": "1.0.2",
+  "version": "2.5.0",
   "description": "A modern, secure, memory saving and fast web browser",
   "main": "main.js",
   "scripts": {
@@ -45,7 +45,8 @@
             "exe": "viron-browser.exe",
             "setupExe": "VironBrowserSetup.exe",
             "setupIcon": "./assets/icons/icon.ico",
-            "loadingGif": "./assets/splash.png"
+            "loadingGif": "./assets/splash.png",
+            "iconUrl": "https://raw.githubusercontent.com/Pragatheesh2007/Viron_browser/refs/heads/main/assets/icons/icon.ico"
           }
         },
         {
