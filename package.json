@@ -42,7 +42,7 @@
           "config": {
             "name": "Virtenx-Browser",
             "authors": "R.S.Pragatheeshwaran",
-            "exe": "Virtenx_Browser.exe",
+            "exe": "Virtenx-Browser.exe",
             "setupExe": "VirtenxBrowserSetup.exe",
             "setupIcon": "./assets/icons/icon.ico",
             "loadingGif": "./assets/splash.png",
