@@ -6,7 +6,7 @@ const fs = require('fs');
 // Initialize the auto-updater (Must be called before app.whenReady)
 updateElectronApp({ notifyUser: true });
 
-// --- DEEP INTEGRATION WINDOWS SQUIRREL SHORTCUT HANDLER ---
+// --- DEEP INTEGRATION WINDOWS SQUIRREL SHORTCUT & BROWSER REGISTRATION HANDLER ---
 if (process.platform === 'win32') {
   const handleSquirrelEvent = () => {
     if (process.argv.length === 1) return false;
@@ -16,6 +16,8 @@ if (process.platform === 'win32') {
     const rootAtomFolder = path.resolve(appFolder, '..');
     const updateDotExe = path.resolve(path.join(rootAtomFolder, 'Update.exe'));
     const exeName = path.basename(process.execPath);
+
+    const escapedExecPath = `\\"${process.execPath}\\"`;
 
     const spawn = (command, args) => {
       let spawnedProcess;
@@ -27,19 +29,53 @@ if (process.platform === 'win32') {
       return spawnedProcess;
     };
 
+    const spawnReg = (args) => {
+      try {
+        const sysRoot = process.env.SystemRoot || 'C:\\Windows';
+        const regExePath = path.join(sysRoot, 'System32', 'reg.exe');
+        ChildProcess.spawnSync(regExePath, args, { stdio: 'ignore' });
+      } catch (error) {
+        console.error("Registry Registration Error:", error);
+      }
+    };
+
     const squirrelEvent = process.argv[1];
+    const regPath = `HKCU\\Software\\Clients\\StartMenuInternet\\Virtenx`;
+    const openCommand = `${escapedExecPath} \\"%1\\"`;
+
     switch (squirrelEvent) {
       case '--squirrel-install':
       case '--squirrel-updated':
-        // Generate explicit desktop shortcut profile links automatically on install/update
         spawn(updateDotExe, ['--createShortcut', exeName]);
-        setTimeout(app.quit, 1000);
+
+        spawnReg(['add', regPath, '/ve', '/d', 'Virtenx Browser', '/f']);
+        spawnReg(['add', `${regPath}\\DefaultIcon`, '/ve', '/d', `${process.execPath},0`, '/f']);
+        spawnReg(['add', `${regPath}\\shell\\open\\command`, '/ve', '/d', openCommand, '/f']);
+
+        spawnReg(['add', `${regPath}\\Capabilities`, '/v', 'ApplicationName', '/d', 'Virtenx', '/f']);
+        spawnReg(['add', `${regPath}\\Capabilities`, '/v', 'ApplicationDescription', '/d', 'A modern, secure, memory saving web browser', '/f']);
+        spawnReg(['add', `${regPath}\\Capabilities\\FileAssociations`, '/v', '.html', '/d', 'VirtenxHTML', '/f']);
+        spawnReg(['add', `${regPath}\\Capabilities\\FileAssociations`, '/v', '.htm', '/d', 'VirtenxHTML', '/f']);
+        spawnReg(['add', `${regPath}\\Capabilities\\URLAssociations`, '/v', 'http', '/d', 'VirtenxHTML', '/f']);
+        spawnReg(['add', `${regPath}\\Capabilities\\URLAssociations`, '/v', 'https', '/d', 'VirtenxHTML', '/f']);
+
+        spawnReg(['add', `HKCU\\Software\\Classes\\VirtenxHTML`, '/ve', '/d', 'Virtenx HTML Document', '/f']);
+        spawnReg(['add', `HKCU\\Software\\Classes\\VirtenxHTML\\Application`, '/v', 'ApplicationName', '/d', 'Virtenx', '/f']);
+        spawnReg(['add', `HKCU\\Software\\Classes\\VirtenxHTML\\DefaultIcon`, '/ve', '/d', `${process.execPath},0`, '/f']);
+        spawnReg(['add', `HKCU\\Software\\Classes\\VirtenxHTML\\shell\\open\\command`, '/ve', '/d', openCommand, '/f']);
+
+        spawnReg(['add', `HKCU\\Software\\RegisteredApplications`, '/v', 'Virtenx', '/d', `${regPath}\\Capabilities`, '/f']);
+
+        setTimeout(app.quit, 1500);
         return true;
 
       case '--squirrel-uninstall':
-        // Force complete shortcut asset cleanups out of system layouts on uninstallation
         spawn(updateDotExe, ['--removeShortcut', exeName]);
-        setTimeout(app.quit, 1000);
+        spawnReg(['delete', regPath, '/f']);
+        spawnReg(['delete', `HKCU\\Software\\Classes\\VirtenxHTML`, '/f']);
+        spawnReg(['delete', `HKCU\\Software\\RegisteredApplications`, '/v', 'Virtenx', '/f']);
+        
+        setTimeout(app.quit, 1500);
         return true;
 
       case '--squirrel-obsolete':
@@ -49,11 +85,10 @@ if (process.platform === 'win32') {
   };
 
   if (handleSquirrelEvent()) {
-    return; // Stop main loop execution right here during background initialization tasks
+    return; 
   }
 }
 
-// Fallback module engine baseline verification check
 if (require('electron-squirrel-startup')) return;
   
 let win;
@@ -67,6 +102,7 @@ const UI_HEIGHT = 83;
 const SIDEBAR_WIDTH = 260;
 
 const SETTINGS_FILE = path.join(app.getPath('userData'), 'settings.json');
+const HISTORY_FILE = path.join(app.getPath('userData'), 'history.html');
 
 let settings = {
   downloadPath: app.getPath('downloads'),
@@ -79,6 +115,49 @@ let settings = {
   autofillPrivate: true,
   passwords: []
 };
+
+const emptyHistoryTemplate = `<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background: #202124; color: #e8eaed; font-family: 'Segoe UI', sans-serif; padding: 40px; max-width: 800px; margin: auto; }
+        .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3c4043; padding-bottom: 20px; margin-bottom: 20px; }
+        h1 { margin: 0; font-weight: 400; }
+        .clear-btn { background: #ff4d4d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        .clear-btn:hover { background: #ff3333; }
+        .entry { padding: 12px; border-bottom: 1px solid #3c4043; display: flex; align-items: center; }
+        .time { color: #9aa0a6; font-size: 12px; margin-right: 15px; min-width: 150px; }
+        .link { color: #8ab4f8; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <h1>History</h1>
+        <button class="clear-btn" onclick="clearAll()">Clear History</button>
+    </div>
+    <div id="list"></div>
+    <script>
+        function clearAll() {
+            if(confirm("Are you sure you want to clear all history?")) {
+                window.electronAPI.clearHistory();
+            }
+        }
+        window.electronAPI.onHistoryCleared(() => {
+            window.location.reload();
+        });
+    </script>
+</body>
+</html>`;
+
+function initHistoryFile() {
+  if (!fs.existsSync(HISTORY_FILE)) {
+    try {
+      fs.writeFileSync(HISTORY_FILE, emptyHistoryTemplate, 'utf8');
+    } catch (e) {
+      console.error("Failed to initialize history storage profile file:", e);
+    }
+  }
+}
 
 function loadSettings() {
   if (fs.existsSync(SETTINGS_FILE)) {
@@ -99,17 +178,18 @@ function saveSettings() {
   }
 }
 
-// Initial load
 loadSettings();
+initHistoryFile();
 
 function checkDefaultBrowser() {
   if (process.platform !== 'win32') return;
+  if (!win || win.isDestroyed()) return;
 
   const isDefaultHttp = app.isDefaultProtocolClient('http');
   const isDefaultHttps = app.isDefaultProtocolClient('https');
 
   if (!isDefaultHttp || !isDefaultHttps) {
-    dialog.showMessageBox(win, {
+    dialog.showMessageBox({
       type: 'question',
       buttons: ['Set as Default', 'Later'],
       title: 'Set Default Browser',
@@ -143,19 +223,26 @@ function createWindow() {
 
   win.loadFile('index.html');
 
-  win.webContents.on('dom-ready', () => {
-    // Rely on index.html z-index
-  });
-
   win.on('close', (e) => {
     if (activeDownloads.size > 0) {
       e.preventDefault();
       win.webContents.send('confirm-close-download');
+      return;
     }
+
+    // FIXED: Manually un-attach and destroy active views on shutdown to prevent background thread object race conditions
+    win.setBrowserView(null);
+    Object.keys(tabs).forEach(id => {
+      if (tabs[id] && tabs[id].view) {
+        tabs[id].view.webContents.close();
+        tabs[id] = null;
+      }
+    });
+    tabs = {};
   });
 
   win.on('resize', () => {
-    if (tabs[currentTabId]) updateViewBounds(tabs[currentTabId].view);
+    if (tabs[currentTabId] && tabs[currentTabId].view) updateViewBounds(tabs[currentTabId].view);
   });
 }
 
@@ -173,32 +260,47 @@ function createTab(id, isPrivate = false, targetWin = win) {
   tabs[id] = { view, isPrivate, targetWin };
   
   view.webContents.on('did-navigate', (event, url) => {
+    // Safety check: Don't process file writing or pipe IPC calls if parent layout engine is turning off
+    if (!targetWin || targetWin.isDestroyed()) return;
+
     if (!isPrivate && !url.startsWith('file://')) {
-      const historyPath = path.join(__dirname, 'history.html');
       const timestamp = new Date().toLocaleString();
       const title = view.webContents.getTitle() || url;
       const entry = `<div class="entry"><span class="time">${timestamp}</span><a href="${url}" class="link">${title}</a></div>\n`;
-      fs.appendFile(historyPath, entry, (err) => { if (err) console.error(err); });
+      
+      try {
+        let currentContent = fs.readFileSync(HISTORY_FILE, 'utf8');
+        if (currentContent.includes('<div id="list">')) {
+          currentContent = currentContent.replace('<div id="list">', '<div id="list">\n' + entry);
+          fs.writeFileSync(HISTORY_FILE, currentContent, 'utf8');
+        } else {
+          fs.appendFileSync(HISTORY_FILE, entry, 'utf8');
+        }
+      } catch (e) {
+        console.error("History file sync error:", e);
+      }
     }
-    targetWin.webContents.send('url-changed', { id, url });
+    if (!targetWin.isDestroyed()) {
+      targetWin.webContents.send('url-changed', { id, url });
+    }
   });
 
   view.webContents.on('page-favicon-updated', (event, favicons) => {
-    if (favicons && favicons.length > 0) {
+    if (targetWin && !targetWin.isDestroyed() && favicons && favicons.length > 0) {
       targetWin.webContents.send('favicon-changed', { id, favUrl: favicons[0] });
     }
   });
 
   view.webContents.on('did-start-loading', () => {
-    targetWin.webContents.send('loading-state', { id, isLoading: true });
+    if (targetWin && !targetWin.isDestroyed()) targetWin.webContents.send('loading-state', { id, isLoading: true });
   });
 
   view.webContents.on('did-stop-loading', () => {
-    targetWin.webContents.send('loading-state', { id, isLoading: false });
+    if (targetWin && !targetWin.isDestroyed()) targetWin.webContents.send('loading-state', { id, isLoading: false });
   });
 
   view.webContents.on('did-navigate-in-page', (event, url) => {
-    targetWin.webContents.send('url-changed', { id, url });
+    if (targetWin && !targetWin.isDestroyed()) targetWin.webContents.send('url-changed', { id, url });
   });
 
   view.webContents.session.on('will-download', (event, item, webContents) => {
@@ -207,9 +309,7 @@ function createTab(id, isPrivate = false, targetWin = win) {
     const timestamp = new Date().toLocaleString();
     const downloadPath = path.join(settings.downloadPath, fileName);
     
-    if (settings.askEverytime) {
-      // User will be prompted by Electron's default dialog behavior
-    } else {
+    if (!settings.askEverytime) {
       item.setSavePath(downloadPath);
     }
     activeDownloads.add(item);
@@ -221,16 +321,18 @@ function createTab(id, isPrivate = false, targetWin = win) {
         const progress = total > 0 ? (received / total) : 0;
         
         BrowserWindow.getAllWindows().forEach(w => {
-          w.webContents.send('download-progress', {
-            id: item.getStartTime(),
-            fileName,
-            received,
-            total,
-            progress,
-            state,
-            startTime: item.getStartTime(),
-            savePath: downloadPath
-          });
+          if (!w.isDestroyed()) {
+            w.webContents.send('download-progress', {
+              id: item.getStartTime(),
+              fileName,
+              received,
+              total,
+              progress,
+              state,
+              startTime: item.getStartTime(),
+              savePath: downloadPath
+            });
+          }
         });
       }
     });
@@ -238,10 +340,12 @@ function createTab(id, isPrivate = false, targetWin = win) {
     item.once('done', (event, state) => {
       activeDownloads.delete(item);
       BrowserWindow.getAllWindows().forEach(w => {
-        w.webContents.send('download-progress', {
-          id: item.getStartTime(),
-          state: 'completed'
-        });
+        if (!w.isDestroyed()) {
+          w.webContents.send('download-progress', {
+            id: item.getStartTime(),
+            state: 'completed'
+          });
+        }
       });
       if (state === 'completed') {
         const downloadsPath = path.join(__dirname, 'downloads.html');
@@ -333,10 +437,6 @@ function createPrivateWindow() {
 
   privateWin.loadFile('index.html');
 
-  privateWin.webContents.on('dom-ready', () => {
-    // Rely on index.html z-index
-  });
-  
   privateWin.on('close', (e) => {
     if (activeDownloads.size > 0) {
       e.preventDefault();
@@ -352,9 +452,8 @@ function createPrivateWindow() {
 }
 
 function updateViewBoundsForWindow(view, targetWin) {
-  if (!view || !targetWin) return;
+  if (!view || !targetWin || targetWin.isDestroyed()) return;
   const bounds = targetWin.getContentBounds();
-  
   const sidebarOffset = isSidebarOpen ? SIDEBAR_WIDTH : 0;
   
   view.setBounds({ 
@@ -371,10 +470,10 @@ function updateViewBounds(view) {
 }
 
 function registerShortcuts() {
-  globalShortcut.register('CommandOrControl+T', () => { win.webContents.send('execute-shortcut', 'new-tab'); });
-  globalShortcut.register('CommandOrControl+W', () => { win.webContents.send('execute-shortcut', 'close-tab'); });
-  globalShortcut.register('CommandOrControl+L', () => { win.webContents.send('execute-shortcut', 'focus-url'); });
-  globalShortcut.register('CommandOrControl+R', () => { if (tabs[currentTabId]) tabs[currentTabId].view.webContents.reload(); });
+  globalShortcut.register('CommandOrControl+T', () => { if (win && !win.isDestroyed()) win.webContents.send('execute-shortcut', 'new-tab'); });
+  globalShortcut.register('CommandOrControl+W', () => { if (win && !win.isDestroyed()) win.webContents.send('execute-shortcut', 'close-tab'); });
+  globalShortcut.register('CommandOrControl+L', () => { if (win && !win.isDestroyed()) win.webContents.send('execute-shortcut', 'focus-url'); });
+  globalShortcut.register('CommandOrControl+R', () => { if (tabs[currentTabId] && tabs[currentTabId].view) tabs[currentTabId].view.webContents.reload(); });
 }
 
 ipcMain.handle('get-settings', () => settings);
@@ -382,7 +481,9 @@ ipcMain.handle('get-settings', () => settings);
 ipcMain.on('update-settings', (event, newSettings) => {
   settings = { ...settings, ...newSettings };
   saveSettings();
-  BrowserWindow.getAllWindows().forEach(w => w.webContents.send('settings-updated', settings));
+  BrowserWindow.getAllWindows().forEach(w => {
+    if (!w.isDestroyed()) w.webContents.send('settings-updated', settings);
+  });
 });
 
 ipcMain.handle('select-download-folder', async () => {
@@ -400,14 +501,13 @@ ipcMain.on('sidebar-state', (event, { sidebarOpen, popupOpen }) => {
   isDownloadPopupOpen = (popupOpen !== undefined) ? popupOpen : isDownloadPopupOpen;
   
   const senderWin = BrowserWindow.fromWebContents(event.sender);
-  if (senderWin && tabs[currentTabId]) {
+  if (senderWin && !senderWin.isDestroyed() && tabs[currentTabId] && tabs[currentTabId].view) {
     updateViewBoundsForWindow(tabs[currentTabId].view, senderWin);
     if (isSidebarOpen || isDownloadPopupOpen) senderWin.webContents.focus();
     else tabs[currentTabId].view.webContents.focus();
   }
 });
 
-// --- PASSWORD MANAGER ---
 ipcMain.on('save-password', async (event, { url, username, password }) => {
   const result = await dialog.showMessageBox(win, {
     type: 'question',
@@ -422,7 +522,9 @@ ipcMain.on('save-password', async (event, { url, username, password }) => {
   if (result.response === 0) { 
     settings.passwords.push({ url, username, password });
     saveSettings();
-    BrowserWindow.getAllWindows().forEach(w => w.webContents.send('settings-updated', settings));
+    BrowserWindow.getAllWindows().forEach(w => {
+      if (!w.isDestroyed()) w.webContents.send('settings-updated', settings);
+    });
   }
 });
 
@@ -433,55 +535,29 @@ ipcMain.on('show-item-in-folder', (event, filePath) => {
 });
 
 ipcMain.on('clear-history', (event) => {
-  const historyPath = path.join(__dirname, 'history.html');
-  const emptyTemplate = `<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body { background: #202124; color: #e8eaed; font-family: 'Segoe UI', sans-serif; padding: 40px; max-width: 800px; margin: auto; }
-        .header-container { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3c4043; padding-bottom: 20px; margin-bottom: 20px; }
-        h1 { margin: 0; font-weight: 400; }
-        .clear-btn { background: #ff4d4d; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; }
-        .clear-btn:hover { background: #ff3333; }
-        .entry { padding: 12px; border-bottom: 1px solid #3c4043; display: flex; align-items: center; }
-        .time { color: #9aa0a6; font-size: 12px; margin-right: 15px; min-width: 150px; }
-        .link { color: #8ab4f8; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="header-container">
-        <h1>History</h1>
-        <button class="clear-btn" onclick="clearAll()">Clear History</button>
-    </div>
-    <script>
-        function clearAll() {
-            if(confirm("Are you sure you want to clear all history?")) {
-                window.electronAPI.clearHistory();
-            }
-        }
-        window.electronAPI.onHistoryCleared(() => {
-            window.location.reload();
-        });
-    </script>
-</body>
-</html>`;
-
-  fs.writeFile(historyPath, emptyTemplate, (err) => { 
+  fs.writeFile(HISTORY_FILE, emptyHistoryTemplate, 'utf8', (err) => { 
     if (err) {
-      console.error("Failed to clear history:", err); 
+      console.error("Failed to clear history file:", err); 
     } else {
-      event.sender.session.clearStorageData({
-        storages: ['cachestorage', 'cookies', 'filesystem']
+      const sessionToClear = event.sender.session;
+      sessionToClear.clearStorageData({
+        storages: ['cachestorage', 'cookies', 'shadercache']
       }).then(() => {
-          event.reply('history-cleared'); 
-      });
+        if (!event.sender.isDestroyed()) event.reply('history-cleared'); 
+        
+        BrowserWindow.getAllWindows().forEach(w => {
+          if (w && !w.isDestroyed()) {
+            w.webContents.send('history-cleared');
+          }
+        });
+      }).catch(err => console.error("Session clear failure:", err));
     }
   });
 });
 
 ipcMain.on('new-tab', (event, { id, isPrivate }) => { 
   const senderWin = BrowserWindow.fromWebContents(event.sender);
-  createTab(id, isPrivate, senderWin); 
+  if (senderWin && !senderWin.isDestroyed()) createTab(id, isPrivate, senderWin); 
 });
 
 ipcMain.on('open-private-window', () => {
@@ -492,21 +568,29 @@ ipcMain.on('switch-tab', (event, id) => {
   currentTabId = id;
   const tabEntry = tabs[id];
   const senderWin = BrowserWindow.fromWebContents(event.sender);
-  if (senderWin && tabEntry && tabEntry.view && tabEntry.view.webContents.getURL() !== "" && tabEntry.view.webContents.getURL() !== 'about:blank') {
+  if (senderWin && !senderWin.isDestroyed() && tabEntry && tabEntry.view && tabEntry.view.webContents.getURL() !== "" && tabEntry.view.webContents.getURL() !== 'about:blank') {
     senderWin.setBrowserView(tabEntry.view);
     updateViewBoundsForWindow(tabEntry.view, senderWin);
     senderWin.webContents.send('url-changed', { id, url: tabEntry.view.webContents.getURL() });
-  } else if (senderWin) {
+  } else if (senderWin && !senderWin.isDestroyed()) {
     senderWin.setBrowserView(null);
   }
 });
 
 ipcMain.on('load-url', (event, { id, url, isPrivate }) => {
   let targetUrl = (url.includes('.') || url.startsWith('http')) ? (url.startsWith('http') ? url : `https://${url}`) : `https://www.google.com/search?q=${url}`;
-  if (url.includes('internal://')) targetUrl = `file://${path.join(__dirname, url.split('//')[1] + '.html')}`;
+  
+  if (url.includes('internal://')) {
+    const pageName = url.split('//')[1];
+    if (pageName === 'history') {
+      targetUrl = `file://${HISTORY_FILE}`; 
+    } else {
+      targetUrl = `file://${path.join(__dirname, pageName + '.html')}`; 
+    }
+  }
   
   const senderWin = BrowserWindow.fromWebContents(event.sender);
-  if (senderWin) {
+  if (senderWin && !senderWin.isDestroyed()) {
     if (!tabs[id]) createTab(id, isPrivate, senderWin);
     currentTabId = id;
     senderWin.setBrowserView(tabs[id].view);
@@ -580,7 +664,7 @@ ipcMain.on('clear-downloads', (event) => {
 </html>`;
   fs.writeFile(downloadsPath, emptyTemplate, (err) => {
     if (err) console.error(err);
-    else event.reply('downloads-cleared');
+    else if (event.sender && !event.sender.isDestroyed()) event.reply('downloads-cleared');
   });
 });
 
@@ -592,7 +676,7 @@ ipcMain.on('cancel-downloads-and-close', () => {
 
 ipcMain.on('window-control', (event, action) => {
   const senderWin = BrowserWindow.fromWebContents(event.sender);
-  if (!senderWin) return;
+  if (!senderWin || senderWin.isDestroyed()) return;
   switch (action) {
     case 'minimize': senderWin.minimize(); break;
     case 'maximize': senderWin.isMaximized() ? senderWin.unmaximize() : senderWin.maximize(); break;
@@ -600,15 +684,14 @@ ipcMain.on('window-control', (event, action) => {
   }
 });
 
-ipcMain.on('go-back', () => { if (tabs[currentTabId]) tabs[currentTabId].view.webContents.navigationHistory.goBack(); });
-ipcMain.on('go-forward', () => { if (tabs[currentTabId]) tabs[currentTabId].view.webContents.navigationHistory.goForward(); });
-ipcMain.on('reload', () => { if (tabs[currentTabId]) tabs[currentTabId].view.webContents.reload(); });
+ipcMain.on('go-back', () => { if (tabs[currentTabId] && tabs[currentTabId].view) tabs[currentTabId].view.webContents.navigationHistory.goBack(); });
+ipcMain.on('go-forward', () => { if (tabs[currentTabId] && tabs[currentTabId].view) tabs[currentTabId].view.webContents.navigationHistory.goForward(); });
+ipcMain.on('reload', () => { if (tabs[currentTabId] && tabs[currentTabId].view) tabs[currentTabId].view.webContents.reload(); });
 
 app.whenReady().then(() => { 
   createWindow(); 
   registerShortcuts(); 
   
-  // Triggers the system check 3 seconds after boot
   setTimeout(checkDefaultBrowser, 3000);
 });
 

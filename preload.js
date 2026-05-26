@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   clearHistory: () => ipcRenderer.send('clear-history'),
-  onHistoryCleared: (callback) => ipcRenderer.on('history-cleared', (_event, ...args) => callback(...args)),
+  onHistoryCleared: (callback) => ipcRenderer.on('history-cleared', () => callback()),
   showItemInFolder: (path) => ipcRenderer.send('show-item-in-folder', path),
   clearDownloads: () => ipcRenderer.send('clear-downloads'),
   onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (_event, ...args) => callback(...args)),
