@@ -1,6 +1,6 @@
 {
-  "name": "Virtenx-Browser",
-  "version": "2.5.1",
+  "name": "Virtenx",
+  "version": "2.5.2",
   "description": "A modern, secure, memory saving and fast web browser",
   "main": "main.js",
   "scripts": {
@@ -34,15 +34,21 @@
     "forge": {
       "packagerConfig": {
         "asar": true,
-        "icon": "./assets/icons/icon"
+        "icon": "./assets/icons/icon",
+        "protocols": [
+          {
+            "name": "Virtenx Browser Web Protocols",
+            "schemes": ["http", "https"]
+          }
+        ]
       },
       "makers": [
         {
           "name": "@electron-forge/maker-squirrel",
           "config": {
-            "name": "Virtenx-Browser",
+            "name": "Virtenx",
             "authors": "R.S.Pragatheeshwaran",
-            "exe": "Virtenx-Browser.exe",
+            "exe": "Virtenx.exe",
             "setupExe": "VirtenxBrowserSetup.exe",
             "setupIcon": "./assets/icons/icon.ico",
             "loadingGif": "./assets/splash.png",

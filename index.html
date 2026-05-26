@@ -5,7 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New Tab</title>
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #ffffff; overflow: hidden; width: 100vw; height: 100vh; }
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            background-color: #ffffff; 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            overflow: hidden; 
+            width: 100vw; 
+            height: 100vh; 
+            transition: background-image 0.4s ease-in-out; /* Smooth fade effect when changing */
+        }
         /* Tabs & Titlebar */
         .tab-bar { position: fixed; top: 0; left: 0; width: 100%; height: 35px; background: #202124; display: flex; align-items: flex-end; padding: 0 150px 0 10px; z-index: 2000000; box-sizing: border-box; -webkit-app-region: drag; }
         .tab { background: #35363a; color: #9aa0a6; height: 28px; min-width: 140px; padding: 0 12px; border-radius: 8px 8px 0 0; font-size: 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; margin-right: 4px; -webkit-app-region: no-drag; transition: background 0.2s; position: relative; }
@@ -60,7 +72,6 @@
         .full-history-link:hover { text-decoration: underline; }
 
         /* Sidebar */
-
         .sidebar { position: fixed; top: 83px; right: 0; width: 260px; height: calc(100vh - 83px); background: #202124; border-left: 1px solid #3c4043; z-index: 2000000; transition: transform 0.2s ease; color: #e8eaed; padding: 10px 0; box-sizing: border-box; transform: translateX(260px); }
         .sidebar.open { transform: translateX(0); box-shadow: -4px 0 20px rgba(0,0,0,0.5); }
         .sidebar-header { padding: 10px 20px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #9aa0a6; }
@@ -69,13 +80,17 @@
 
         /* Home UI */
         .main-container { margin-top: 83px; height: calc(100vh - 83px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        h1.home-title { font-size: 72px; color: #202124; margin-bottom: 20px; font-weight: 400; }
+        .home-logo {
+            max-width: 270px;
+            height: auto;
+            margin-bottom: 25px;
+            object-fit: contain;
+        }
         .search-wrapper { width: 90%; max-width: 580px; background: white; border: 1px solid #dfe1e5; border-radius: 24px; padding: 5px 20px; display: flex; align-items: center; transition: box-shadow 0.2s; }
         #home-input { flex: 1; border: none; outline: none; height: 34px; font-size: 16px; background: transparent; }
-        .version-tag { position: fixed; bottom: 15px; right: 20px; color: #70757a; font-size: 13px; }
+        .version-tag { position: fixed; bottom: 15px; right: 20px; color: #e8eaed; font-size: 13px; text-shadow: 0px 1px 3px rgba(0,0,0,0.8); }
         
         svg { width: 18px; height: 18px; fill: currentColor; }
-
     </style>
 </head>
 <body>
@@ -98,14 +113,12 @@
         </div>
     </div>
 
-    <!-- Download Popup -->
     <div class="download-popup" id="download-popup">
         <div class="popup-header">
             <span>Recent download history</span>
             <span class="popup-close" onclick="toggleDownloadPopup()">×</span>
         </div>
         <div class="popup-list" id="popup-list">
-            <!-- Items populated dynamically -->
             <div style="padding: 20px; text-align: center; color: #9aa0a6; font-size: 12px;">No recent downloads</div>
         </div>
         <div class="popup-footer">
@@ -127,21 +140,56 @@
     </div>
 
     <a href="D:\viron-browser\viron-browser\changelog.html" style="text-decoration: none;">
-    <div class="version-tag">Ver: 2.5.1(Stable)</div>
-</a>
-    <div class="main-container" id="home-ui"><h1 class="home-title">Web Search</h1><div class="search-wrapper"><input type="text" id="home-input" placeholder="Search..." autofocus></div></div>
+        <div class="version-tag">Ver: 2.5.2(Stable)</div>
+    </a>
+    <div class="main-container" id="home-ui">
+        <img src="./assets/splash.png" alt="Browser Logo" class="home-logo">
+        <div class="search-wrapper"><input type="text" id="home-input" placeholder="Search..." autofocus></div>
+    </div>
     
     <script>
+        // Set up the explicit pool of 15 dynamic wallpaper targets
+        const backgroundImages = [
+            "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1604871000636-074fa5117945?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1541701494587-cb58502866ab?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1614850523459-c2f4c699c52e?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1528459801416-a9e53bbf4e17?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?auto=format&fit=crop&w=1920&q=80",
+            "https://images.unsplash.com/photo-1472214222541-d510753a8707?auto=format&fit=crop&w=1920&q=80"
+        ];
+
+        function changeBackground() {
+            let currentIndex = parseInt(localStorage.getItem('bgIndex')) || 0;
+            let nextIndex = (currentIndex + 1) % backgroundImages.length;
+            localStorage.setItem('bgIndex', nextIndex);
+            document.body.style.backgroundImage = `url('${backgroundImages[currentIndex]}')`;
+        }
+
+        // Run it immediately when DOM initialization loads
+        changeBackground();
+
         const { ipcRenderer } = require('electron');
         let tabCount = 0, activeTabId = 0, tabUrls = { 0: "" }, tabPrivateStates = { 0: false };
-        let downloadHistory = {}; // Global history for this window's popup
+        let downloadHistory = {}; 
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
+            const popup = document.getElementById('download-popup');
             if (sidebar) {
                 sidebar.classList.toggle('open');
-                const isOpen = sidebar.classList.contains('open');
-                ipcRenderer.send('sidebar-state', isOpen);
+                ipcRenderer.send('sidebar-state', { 
+                    sidebarOpen: sidebar.classList.contains('open'),
+                    popupOpen: popup.classList.contains('open')
+                });
             }
         }
         
@@ -177,8 +225,6 @@
         }
 
         ipcRenderer.on('init-private-mode', () => {
-            // This window is designated as a private window
-            // Replace the initial tab with a private one
             const initialTab = document.getElementById('tab-0');
             if (initialTab) {
                 initialTab.className = 'tab active private';
@@ -193,7 +239,6 @@
             document.getElementById(`tab-${id}`).classList.add('active'); 
             document.getElementById('address-bar').value = tabUrls[id] || ""; 
             
-            // Show/Hide Home UI based on URL
             const homeUI = document.getElementById('home-ui');
             const url = tabUrls[id] || "";
             if (url === "" || url === "about:blank") {
@@ -219,17 +264,17 @@
             const tab = document.getElementById(`tab-${id}`); 
             if (tab) { 
                 let title = "New Tab";
-                if (url.includes('history.html')) title = "HISTORY";
-                else if (url.includes('downloads.html')) title = "DOWNLOADS";
-                else if (url.includes('settings.html')) title = "SETTINGS";
-                else if (url.includes('passwords.html')) title = "PASSWORDS";
+                if (url.includes('history.html')) title = "History";
+                else if (url.includes('downloads.html')) title = "Downloads";
+                else if (url.includes('settings.html')) title = "Settings";
+                else if (url.includes('passwords.html')) title = "Passwords";
+                else if (url.includes('changelog.html')) title = "Changelog";
                 else if (url.includes('http')) title = url.split('/')[2] || url;
                 
                 tab.querySelector('span').innerText = title; 
 
-                // Set icon for internal pages
                 const iconImg = document.getElementById(`icon-${id}`);
-                if (url.includes('settings.html')) iconImg.src = "https://www.google.com/s2/favicons?sz=64&domain=google.com"; // Placeholder or gear icon
+                if (url.includes('settings.html')) iconImg.src = "https://www.google.com/s2/favicons?sz=64&domain=google.com";
                 else if (url.includes('passwords.html')) iconImg.src = "https://www.google.com/s2/favicons?sz=64&domain=google.com";
             } 
         });
@@ -242,10 +287,27 @@
             } 
         }
         
-        document.getElementById('address-bar').addEventListener('keypress', (e) => { if(e.key === 'Enter') load(e.target.value); });
-        document.getElementById('home-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') { load(e.target.value); e.target.value = ""; } });
+        // Background-changing hooks integrated directly into Enter press logic
+        document.getElementById('address-bar').addEventListener('keypress', (e) => { 
+            if(e.key === 'Enter') { 
+                changeBackground();
+                load(e.target.value); 
+            } 
+        });
+        document.getElementById('home-input').addEventListener('keypress', (e) => { 
+            if(e.key === 'Enter') { 
+                changeBackground();
+                load(e.target.value); 
+                e.target.value = ""; 
+            } 
+        });
         
-        function nav(cmd) { ipcRenderer.send(cmd); }
+        function nav(cmd) { 
+            if (cmd === 'reload') {
+                changeBackground();
+            }
+            ipcRenderer.send(cmd); 
+        }
         
         function closeTab(e, id) { 
             if (e) e.stopPropagation(); 
@@ -267,28 +329,10 @@
             });
         }
 
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const popup = document.getElementById('download-popup');
-            if (sidebar) {
-                sidebar.classList.toggle('open');
-                ipcRenderer.send('sidebar-state', { 
-                    sidebarOpen: sidebar.classList.contains('open'),
-                    popupOpen: popup.classList.contains('open')
-                });
-            }
-        }
-
-
-
-
         ipcRenderer.on('download-progress', (event, data) => {
             const popupList = document.getElementById('popup-list');
-            
-            // Sync with global window history
             downloadHistory[data.id] = data;
 
-            // Update UI
             if (popupList.children.length === 1 && popupList.children[0].innerText.includes("No recent")) {
                 popupList.innerHTML = '';
             }
@@ -309,7 +353,6 @@
                 item.onclick = () => { if (data.savePath) ipcRenderer.send('show-item-in-folder', data.savePath); };
                 popupList.prepend(item);
                 
-                // Only auto-open if it's a fresh start, not a re-broadcast
                 if (!document.getElementById('download-popup').classList.contains('open')) {
                     toggleDownloadPopup();
                 }
@@ -352,7 +395,6 @@
                 toggleSidebar(); 
             }
             
-            // Close download popup when clicking outside
             const dlPopup = document.getElementById('download-popup');
             const dlBtn = document.getElementById('dl-icon-btn');
             if (dlPopup.classList.contains('open') && !dlPopup.contains(event.target) && !dlBtn.contains(event.target)) {
@@ -369,4 +411,4 @@
         });
     </script>
 </body>
-</html> 
+</html>

@@ -1,17 +1,61 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, BrowserView, ipcMain, globalShortcut, shell, dialog } = require('electron');
 const { updateElectronApp } = require('update-electron-app');
-updateElectronApp({ notifyUser: true });
-
-// Initialize the auto-updater (Must be called before app.whenReady)
-updateElectronApp();
-if (require('electron-squirrel-startup')) {
-  return; // Quits the app immediately during startup events so the installer can do its job
-}
-  
-const { BrowserView, ipcMain, globalShortcut, shell, dialog } = require('electron');
 const path = require('path'); 
 const fs = require('fs'); 
 
+// Initialize the auto-updater (Must be called before app.whenReady)
+updateElectronApp({ notifyUser: true });
+
+// --- DEEP INTEGRATION WINDOWS SQUIRREL SHORTCUT HANDLER ---
+if (process.platform === 'win32') {
+  const handleSquirrelEvent = () => {
+    if (process.argv.length === 1) return false;
+
+    const ChildProcess = require('child_process');
+    const appFolder = path.resolve(process.execPath, '..');
+    const rootAtomFolder = path.resolve(appFolder, '..');
+    const updateDotExe = path.resolve(path.join(rootAtomFolder, 'Update.exe'));
+    const exeName = path.basename(process.execPath);
+
+    const spawn = (command, args) => {
+      let spawnedProcess;
+      try {
+        spawnedProcess = ChildProcess.spawn(command, args, { detached: true });
+      } catch (error) {
+        console.error("Squirrel Spawn Error:", error);
+      }
+      return spawnedProcess;
+    };
+
+    const squirrelEvent = process.argv[1];
+    switch (squirrelEvent) {
+      case '--squirrel-install':
+      case '--squirrel-updated':
+        // Generate explicit desktop shortcut profile links automatically on install/update
+        spawn(updateDotExe, ['--createShortcut', exeName]);
+        setTimeout(app.quit, 1000);
+        return true;
+
+      case '--squirrel-uninstall':
+        // Force complete shortcut asset cleanups out of system layouts on uninstallation
+        spawn(updateDotExe, ['--removeShortcut', exeName]);
+        setTimeout(app.quit, 1000);
+        return true;
+
+      case '--squirrel-obsolete':
+        setTimeout(app.quit, 1000);
+        return true;
+    }
+  };
+
+  if (handleSquirrelEvent()) {
+    return; // Stop main loop execution right here during background initialization tasks
+  }
+}
+
+// Fallback module engine baseline verification check
+if (require('electron-squirrel-startup')) return;
+  
 let win;
 let tabs = {}; 
 let currentTabId = 0;
@@ -58,6 +102,30 @@ function saveSettings() {
 // Initial load
 loadSettings();
 
+function checkDefaultBrowser() {
+  if (process.platform !== 'win32') return;
+
+  const isDefaultHttp = app.isDefaultProtocolClient('http');
+  const isDefaultHttps = app.isDefaultProtocolClient('https');
+
+  if (!isDefaultHttp || !isDefaultHttps) {
+    dialog.showMessageBox(win, {
+      type: 'question',
+      buttons: ['Set as Default', 'Later'],
+      title: 'Set Default Browser',
+      message: 'Virtenx is not your default browser. Would you like to make it your primary web browser?',
+      defaultId: 0,
+      cancelId: 1
+    }).then((result) => {
+      if (result.response === 0) {
+        app.setAsDefaultProtocolClient('http');
+        app.setAsDefaultProtocolClient('https');
+        shell.openExternal('ms-settings:defaultapps');
+      }
+    }).catch(err => console.error("Default browser dialog error:", err));
+  }
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1200,
@@ -75,7 +143,6 @@ function createWindow() {
 
   win.loadFile('index.html');
 
-  // Ensure UI is always on top (handled by z-index in index.html mainly)
   win.webContents.on('dom-ready', () => {
     // Rely on index.html z-index
   });
@@ -91,8 +158,6 @@ function createWindow() {
     if (tabs[currentTabId]) updateViewBounds(tabs[currentTabId].view);
   });
 }
-
-
 
 function createTab(id, isPrivate = false, targetWin = win) {
   const view = new BrowserView({
@@ -143,7 +208,7 @@ function createTab(id, isPrivate = false, targetWin = win) {
     const downloadPath = path.join(settings.downloadPath, fileName);
     
     if (settings.askEverytime) {
-      // User will be prompted by Electron's default dialog behavior if savePath is not set immediately
+      // User will be prompted by Electron's default dialog behavior
     } else {
       item.setSavePath(downloadPath);
     }
@@ -155,10 +220,6 @@ function createTab(id, isPrivate = false, targetWin = win) {
         const total = item.getTotalBytes();
         const progress = total > 0 ? (received / total) : 0;
         
-        // Simple ETA calculation
-        // item.getLastModifiedTime() is not for ETA. Electron's DownloadItem doesn't have native ETA.
-        // We'll send raw data to frontend.
-        // Broadcast to ALL windows so every tab's popup stays synced
         BrowserWindow.getAllWindows().forEach(w => {
           w.webContents.send('download-progress', {
             id: item.getStartTime(),
@@ -184,7 +245,6 @@ function createTab(id, isPrivate = false, targetWin = win) {
       });
       if (state === 'completed') {
         const downloadsPath = path.join(__dirname, 'downloads.html');
-        // Ensure the file exists with a basic template if it doesn't
         if (!fs.existsSync(downloadsPath)) {
           const initTemplate = `<!DOCTYPE html><html><head><style>
             body { background: #202124; color: #e8eaed; font-family: 'Segoe UI', sans-serif; padding: 40px; max-width: 800px; margin: auto; }
@@ -243,7 +303,6 @@ function createTab(id, isPrivate = false, targetWin = win) {
           <span class="info">${timestamp} - ${url}</span>
         </div>\n`;
         
-        // Simple way to append to the list in our static HTML
         let content = fs.readFileSync(downloadsPath, 'utf8');
         if (content.includes('<div id="list">')) {
           content = content.replace('<div id="list">', '<div id="list">\n' + entry);
@@ -274,7 +333,6 @@ function createPrivateWindow() {
 
   privateWin.loadFile('index.html');
 
-  // Ensure UI is on top
   privateWin.webContents.on('dom-ready', () => {
     // Rely on index.html z-index
   });
@@ -286,7 +344,6 @@ function createPrivateWindow() {
     }
   });
 
-  // Tag this window as starting in private mode
   privateWin.webContents.on('did-finish-load', () => {
     privateWin.webContents.send('init-private-mode');
   });
@@ -298,11 +355,7 @@ function updateViewBoundsForWindow(view, targetWin) {
   if (!view || !targetWin) return;
   const bounds = targetWin.getContentBounds();
   
-  // When the sidebar is open, we shrink the web view width by 260px.
-  // When the download popup is open, we shrink the height or move the view down.
-  // This physically moves the website content out of the way so the UI stays visible.
   const sidebarOffset = isSidebarOpen ? SIDEBAR_WIDTH : 0;
-  const popupPadding = isDownloadPopupOpen ? 420 : 0; // The max height of the popup list
   
   view.setBounds({ 
     x: 0, 
@@ -366,7 +419,7 @@ ipcMain.on('save-password', async (event, { url, username, password }) => {
     checkboxChecked: true
   });
 
-  if (result.response === 0) { // Save
+  if (result.response === 0) { 
     settings.passwords.push({ url, username, password });
     saveSettings();
     BrowserWindow.getAllWindows().forEach(w => w.webContents.send('settings-updated', settings));
@@ -375,8 +428,6 @@ ipcMain.on('save-password', async (event, { url, username, password }) => {
 
 ipcMain.handle('get-passwords', () => settings.passwords);
 
-
-// --- FINAL FIX FOR CLEARING HISTORY ---
 ipcMain.on('show-item-in-folder', (event, filePath) => {
   shell.showItemInFolder(filePath);
 });
@@ -419,11 +470,10 @@ ipcMain.on('clear-history', (event) => {
     if (err) {
       console.error("Failed to clear history:", err); 
     } else {
-      // CLEAR CACHE AND STORAGE: Forces Electron to load the empty file from disk
       event.sender.session.clearStorageData({
         storages: ['cachestorage', 'cookies', 'filesystem']
       }).then(() => {
-          event.reply('history-cleared'); // Notify the page to reload
+          event.reply('history-cleared'); 
       });
     }
   });
@@ -554,6 +604,13 @@ ipcMain.on('go-back', () => { if (tabs[currentTabId]) tabs[currentTabId].view.we
 ipcMain.on('go-forward', () => { if (tabs[currentTabId]) tabs[currentTabId].view.webContents.navigationHistory.goForward(); });
 ipcMain.on('reload', () => { if (tabs[currentTabId]) tabs[currentTabId].view.webContents.reload(); });
 
-app.whenReady().then(() => { createWindow(); registerShortcuts(); });
+app.whenReady().then(() => { 
+  createWindow(); 
+  registerShortcuts(); 
+  
+  // Triggers the system check 3 seconds after boot
+  setTimeout(checkDefaultBrowser, 3000);
+});
+
 app.on('will-quit', () => { globalShortcut.unregisterAll(); });
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
